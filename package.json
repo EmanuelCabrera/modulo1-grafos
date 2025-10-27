@@ -6,6 +6,8 @@
     "type": "commonjs",
     "scripts": {
       "start": "node index.js",
+      "start:dev": "node index.js",
+      "dev": "node index.js",
       "setup": "node src/setup.js"
     },
     "dependencies": {
