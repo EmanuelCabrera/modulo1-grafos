@@ -313,10 +313,6 @@ El script `setup.js` maneja automáticamente la eliminación de índices conflic
 - **Validación**: Siempre validar entrada de usuario
 - **Manejo de Errores**: Usar try-catch y mensajes descriptivos
 
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
 ## 👨‍💻 Autor
 
 Desarrollado como parte del curso de Arquitectura de Software - Módulo 1: Grafos
