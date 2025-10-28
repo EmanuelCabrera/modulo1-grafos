@@ -50,7 +50,7 @@ const PersonaRepository = {
     try {
       const res = await session.run(
         `MATCH (p:Person) 
-         WHERE p.name = $name 
+         WHERE toLower(p.name) = toLower($name) 
          RETURN p LIMIT 1`,
         { name }
       );
@@ -64,8 +64,8 @@ const PersonaRepository = {
     const session = getSession('READ');
     try {
       const res = await session.run(
-        `MATCH (p:Person {id: $id})-[:FRIEND_WITH]->(f:Person) 
-         RETURN f ORDER BY f.name`, 
+        `MATCH (p:Person {id: $id})-[:FRIEND_WITH]-(f:Person) 
+         RETURN DISTINCT f ORDER BY f.name`, 
         { id }
       );
       return res.records.map(r => r.get('f').properties);
