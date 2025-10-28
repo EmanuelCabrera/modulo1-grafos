@@ -74,6 +74,100 @@ const PersonaRepository = {
     }
   },
 
+  async getCityRecommendations(personId, city) {
+    const session = getSession('READ');
+    try {
+      const res = await session.run(
+        `MATCH (p:Person {id: $personId})
+         MATCH (recommendation:Person)
+         WHERE recommendation.id <> $personId 
+           AND NOT (p)-[:FRIEND_WITH]-(recommendation)
+           AND recommendation.city = $city
+         RETURN DISTINCT recommendation ORDER BY recommendation.name`,
+        { personId, city }
+      );
+      return res.records.map(r => r.get('recommendation').properties);
+    } finally {
+      await session.close();
+    }
+  },
+
+  async getHobbyRecommendations(personId, hobby) {
+    const session = getSession('READ');
+    try {
+      const res = await session.run(
+        `MATCH (p:Person {id: $personId})
+         MATCH (recommendation:Person)
+         WHERE recommendation.id <> $personId 
+           AND NOT (p)-[:FRIEND_WITH]-(recommendation)
+           AND recommendation.hobby = $hobby
+         RETURN DISTINCT recommendation ORDER BY recommendation.name`,
+        { personId, hobby }
+      );
+      return res.records.map(r => r.get('recommendation').properties);
+    } finally {
+      await session.close();
+    }
+  },
+
+  async getStatistics() {
+    const session = getSession('READ');
+    try {
+      // Total de personas
+      const peopleResult = await session.run(`MATCH (p:Person) RETURN count(p) as total`);
+      const totalPeople = peopleResult.records[0].get('total').toNumber();
+
+      // Total de relaciones
+      const relationsResult = await session.run(`MATCH ()-[r:FRIEND_WITH]->() RETURN count(r) as total`);
+      const totalRelationships = relationsResult.records[0].get('total').toNumber();
+
+      // Ciudades únicas
+      const citiesResult = await session.run(`MATCH (p:Person) WHERE p.city IS NOT NULL RETURN count(DISTINCT p.city) as total`);
+      const uniqueCities = citiesResult.records[0].get('total').toNumber();
+
+      // Hobbies únicos
+      const hobbiesResult = await session.run(`MATCH (p:Person) WHERE p.hobby IS NOT NULL RETURN count(DISTINCT p.hobby) as total`);
+      const uniqueHobbies = hobbiesResult.records[0].get('total').toNumber();
+
+      // Promedio de amigos por persona
+      const avgResult = await session.run(
+        `MATCH (p:Person)
+         OPTIONAL MATCH (p)-[:FRIEND_WITH]-(friend:Person)
+         WITH p, count(friend) as friendCount
+         RETURN avg(friendCount) as average`
+      );
+      const averageFriendsValue = avgResult.records[0].get('average');
+      const averageFriends = averageFriendsValue ? 
+        (typeof averageFriendsValue.toNumber === 'function' ? averageFriendsValue.toNumber() : Number(averageFriendsValue)) : 
+        0;
+
+      // Persona con más amigos
+      const mostConnectedResult = await session.run(
+        `MATCH (p:Person)
+         OPTIONAL MATCH (p)-[:FRIEND_WITH]-(friend:Person)
+         WITH p, count(friend) as friendCount
+         ORDER BY friendCount DESC
+         LIMIT 1
+         RETURN p.name as name, friendCount`
+      );
+      const mostConnectedRecord = mostConnectedResult.records[0];
+      const mostConnectedPerson = mostConnectedRecord ? 
+        `${mostConnectedRecord.get('name')} (${mostConnectedRecord.get('friendCount')} amigos)` : 
+        null;
+
+      return {
+        totalPeople,
+        totalRelationships,
+        uniqueCities,
+        uniqueHobbies,
+        averageFriends,
+        mostConnectedPerson
+      };
+    } finally {
+      await session.close();
+    }
+  },
+
 };
 
 module.exports = PersonaRepository;

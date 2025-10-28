@@ -37,6 +37,10 @@ async function mainMenu() {
         { name: 'Quitar amigo', value: 'removeFriend' },
         { name: 'Listar amigos', value: 'listFriends' },
         new inquirer.Separator(),
+        { name: 'Recomendaciones por ciudad', value: 'cityRecommendations' },
+        { name: 'Recomendaciones por hobby', value: 'hobbyRecommendations' },
+        { name: 'Estadísticas', value: 'statistics' },
+        new inquirer.Separator(),
         { name: 'Salir', value: 'exit' }
       ]
     }
@@ -110,6 +114,38 @@ async function mainMenu() {
         ]);
         const friends = await RedSocialService.listFriendsByName(name);
         printPeople(friends);
+        break;
+      }
+
+      case 'cityRecommendations': {
+        const { name } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: 'Nombre completo de la persona para recomendaciones por ciudad:' }
+        ]);
+        const recommendations = await RedSocialService.getCityRecommendations(name);
+        console.log('\n🏙️ Recomendaciones por ciudad:');
+        printPeople(recommendations);
+        break;
+      }
+
+      case 'hobbyRecommendations': {
+        const { name } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: 'Nombre completo de la persona para recomendaciones por hobby:' }
+        ]);
+        const recommendations = await RedSocialService.getHobbyRecommendations(name);
+        console.log('\n🎯 Recomendaciones por hobby:');
+        printPeople(recommendations);
+        break;
+      }
+
+      case 'statistics': {
+        const stats = await RedSocialService.getStatistics();
+        console.log('\n📊 Estadísticas de la Red Social:');
+        console.log(`👥 Total de personas: ${stats.totalPeople}`);
+        console.log(`🤝 Total de relaciones de amistad: ${stats.totalRelationships}`);
+        console.log(`🏙️ Ciudades únicas: ${stats.uniqueCities}`);
+        console.log(`🎯 Hobbies únicos: ${stats.uniqueHobbies}`);
+        console.log(`📈 Promedio de amigos por persona: ${stats.averageFriends.toFixed(1)}`);
+        console.log(`👑 Persona con más amigos: ${stats.mostConnectedPerson || 'N/A'}`);
         break;
       }
 

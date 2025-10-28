@@ -69,6 +69,23 @@ const RedSocialService = {
     }
     return PersonaRepository.friendsOf(person.id);
   },
+  async getCityRecommendations(name) {
+    const person = await PersonaRepository.findByName(name);
+    if (!person) {
+      throw new Error(`No se encontró persona: ${name}`);
+    }
+    return PersonaRepository.getCityRecommendations(person.id, person.city);
+  },
+  async getHobbyRecommendations(name) {
+    const person = await PersonaRepository.findByName(name);
+    if (!person) {
+      throw new Error(`No se encontró persona: ${name}`);
+    }
+    return PersonaRepository.getHobbyRecommendations(person.id, person.hobby);
+  },
+  async getStatistics() {
+    return PersonaRepository.getStatistics();
+  },
 };
 
 module.exports = RedSocialService;
