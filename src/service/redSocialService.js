@@ -4,6 +4,12 @@ const AmigosRepository = require('../repositories/amigosRepository');
 
 const RedSocialService = {
   async registerPerson({ id, name, city, age, hobby }) {
+    // Validar que no exista una persona con el mismo nombre (case-insensitive)
+    const existingPerson = await PersonaRepository.findByName(name);
+    if (existingPerson) {
+      throw new Error(`Ya existe una persona con el nombre "${name}" (sin importar mayúsculas/minúsculas)`);
+    }
+    
     const finalId = id || uuidv4();
     return PersonaRepository.createOrUpdate({ id: finalId, name, city, age, hobby });
   },

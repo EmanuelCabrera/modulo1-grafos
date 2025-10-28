@@ -3,13 +3,15 @@ const { getSession, closeDriver } = require('./db/neo4j');
 (async () => {
   const session = getSession('WRITE');
   try {
-    // Eliminar índices existentes que puedan conflictuar con constraints
+    // Eliminar índices y constraints existentes que puedan conflictuar
     await session.run(`DROP INDEX person_name IF EXISTS`);
     await session.run(`DROP INDEX person_email IF EXISTS`);
+    await session.run(`DROP CONSTRAINT person_name_unique IF EXISTS`);
     
     // Crear constraints
     await session.run(`CREATE CONSTRAINT person_id_unique IF NOT EXISTS FOR (p:Person) REQUIRE p.id IS UNIQUE`);
-    await session.run(`CREATE CONSTRAINT person_name_unique IF NOT EXISTS FOR (p:Person) REQUIRE p.name IS UNIQUE`);
+    // Constraint case-insensitive para nombres únicos
+    await session.run(`CREATE CONSTRAINT person_name_unique_case_insensitive IF NOT EXISTS FOR (p:Person) REQUIRE toLower(p.name) IS UNIQUE`);
     
     // Crear índices adicionales
     await session.run(`CREATE INDEX person_city IF NOT EXISTS FOR (p:Person) ON (p.city)`);
