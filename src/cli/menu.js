@@ -12,16 +12,18 @@ function printPeople(people) {
   console.log(`\n📋 Personas encontradas (${people.length}):`);
   people.forEach((person, index) => {
     console.log(`${index + 1}. ${person.name} (ID: ${person.id})`);
-    if (person.email) {
-      console.log(`   Email: ${person.email}`);
+    console.log(`   Ciudad: ${person.city}`);
+    if (person.age) {
+      console.log(`   Edad: ${person.age}`);
+    }
+    if (person.hobby) {
+      console.log(`   Hobby: ${person.hobby}`);
     }
   });
   console.log(''); // Línea en blanco para separar
 }
 
 async function mainMenu() {
-  console.log('🔍 [DEBUG] Iniciando mainMenu()');
-  
   const { action } = await inquirer.prompt([
     {
       type: 'list',
@@ -31,111 +33,110 @@ async function mainMenu() {
         { name: 'Registrar persona', value: 'register' },
         { name: 'Listar personas', value: 'list' },
         { name: 'Eliminar persona', value: 'delete' },
+        { name: 'Agregar amigo', value: 'addFriend' },
+        { name: 'Quitar amigo', value: 'removeFriend' },
+        { name: 'Listar amigos', value: 'listFriends' },
         new inquirer.Separator(),
         { name: 'Salir', value: 'exit' }
       ]
     }
   ]);
 
-  console.log(`🔍 [DEBUG] Acción seleccionada: ${action}`);
-
   try {
     switch (action) {
       case 'register': {
-        console.log('🔍 [DEBUG] Entrando en case register');
-        const { name, email, id } = await inquirer.prompt([
-          { type: 'input', name: 'name', message: 'Nombre:', validate: v => v ? true : 'Obligatorio' },
-          { type: 'input', name: 'email', message: 'Email (opcional):' },
-          { type: 'input', name: 'id', message: 'ID personalizado (enter para UUID):' }
+        const { name, city, age, hobby } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: 'Nombre completo:', validate: v => v ? true : 'Obligatorio' },
+          { type: 'input', name: 'city', message: 'Ciudad:', validate: v => v ? true : 'Obligatorio' },
+          { type: 'input', name: 'age', message: 'Edad (opcional):' },
+          { type: 'input', name: 'hobby', message: 'Hobby (opcional):' }
         ]);
-        console.log('🔍 [DEBUG] Datos obtenidos, llamando a RedSocialService.registerPerson');
-        const person = await RedSocialService.registerPerson({ id: id || undefined, name, email });
-        console.log('🔍 [DEBUG] RedSocialService.registerPerson completado');
+        const person = await RedSocialService.registerPerson({ 
+          name, 
+          city, 
+          age: age ? parseInt(age) : null, 
+          hobby: hobby || null 
+        });
         console.log('✅ Persona creada/actualizada:');
         console.log(person);
-        console.log('🔍 [DEBUG] Case register completado, saliendo del switch');
         break;
       }
 
       case 'list': {
-        console.log('🔍 [DEBUG] Entrando en case list');
         const { q } = await inquirer.prompt([
-          { type: 'input', name: 'q', message: 'Filtro por nombre/email (enter para todos):' }
+          { type: 'input', name: 'q', message: 'Filtro por nombre/ciudad/hobby (enter para todos):' }
         ]);
-        console.log('🔍 [DEBUG] Filtro obtenido, llamando a RedSocialService.listPeople');
         console.log('🔍 Buscando personas...');
         const people = await RedSocialService.listPeople(q || undefined);
-        console.log('🔍 [DEBUG] RedSocialService.listPeople completado, llamando a printPeople');
         printPeople(people);
-        console.log('🔍 [DEBUG] printPeople completado, case list completado');
         break;
       }
 
       case 'delete': {
-        console.log('🔍 [DEBUG] Entrando en case delete');
-        const { id, confirm } = await inquirer.prompt([
-          { type: 'input', name: 'id', message: 'ID de la persona a eliminar:', validate: v => !!v || 'Obligatorio' },
-          { type: 'confirm', name: 'confirm', message: '¿Confirmás eliminar la persona y sus relaciones?' }
+        const { name, confirm } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: 'Nombre completo de la persona a eliminar:', validate: v => !!v || 'Obligatorio' },
+          { type: 'confirm', name: 'confirm', message: '¿Estás seguro de que querés eliminar esta persona y todas sus relaciones de amistad?' }
         ]);
-        console.log('🔍 [DEBUG] Datos de eliminación obtenidos');
         if (confirm) {
-          console.log('🔍 [DEBUG] Confirmación recibida, llamando a RedSocialService.deletePerson');
-          await RedSocialService.deletePerson(id);
-          console.log('🔍 [DEBUG] RedSocialService.deletePerson completado');
-          console.log(`✅ Persona ${id} eliminada`);
+          await RedSocialService.deletePersonByName(name);
+          console.log(`✅ Persona "${name}" eliminada exitosamente`);
         } else {
-          console.log('🔍 [DEBUG] Eliminación cancelada');
           console.log('⚠️ Operación cancelada');
         }
-        console.log('🔍 [DEBUG] Case delete completado');
+        break;
+      }
+
+      case 'addFriend': {
+        const { fromName, toName } = await inquirer.prompt([
+          { type: 'input', name: 'fromName', message: 'Nombre completo de la persona que quiere agregar amigo:' },
+          { type: 'input', name: 'toName', message: 'Nombre completo de la persona a agregar:' }
+        ]);
+        await RedSocialService.addFriendByName(fromName, toName);
+        break;
+      }
+
+      case 'removeFriend': {
+        const { fromName, toName } = await inquirer.prompt([
+          { type: 'input', name: 'fromName', message: 'Nombre completo de la persona que quiere quitar amigo:' },
+          { type: 'input', name: 'toName', message: 'Nombre completo de la persona a quitar:' }
+        ]);
+        await RedSocialService.removeFriendByName(fromName, toName);
+        break;
+      }
+
+      case 'listFriends': {
+        const { name } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: 'Nombre completo de la persona para listar amigos:' }
+        ]);
+        const friends = await RedSocialService.listFriendsByName(name);
+        printPeople(friends);
         break;
       }
 
       case 'exit':
-        console.log('🔍 [DEBUG] Entrando en case exit');
         console.log('👋 ¡Hasta luego!');
-        console.log('🔍 [DEBUG] Retornando false desde case exit');
         return false;
     }
   } catch (e) {
-    console.log('🔍 [DEBUG] Error capturado en mainMenu()');
     console.error('❌ Error:', e.message);
-    console.error('📋 Stack:', e.stack);
     console.log('⚠️ Presiona Enter para continuar...');
     await inquirer.prompt([{ type: 'input', name: 'continue', message: '' }]);
-    console.log('🔍 [DEBUG] Error manejado, continuando');
   }
 
-  console.log('🔍 [DEBUG] mainMenu() completado, retornando true');
   return true;
 }
 
 async function runLoop() {
   let keepGoing = true;
-  let iteration = 0;
-  
-  console.log('🔍 [DEBUG] Iniciando runLoop()');
   
   while (keepGoing) {
-    iteration++;
-    console.log(`🔍 [DEBUG] === Iteración ${iteration} del bucle ===`);
-    console.log(`🔍 [DEBUG] keepGoing antes de mainMenu(): ${keepGoing}`);
-    
-    console.log('🔍 [DEBUG] Llamando a mainMenu()...');
     keepGoing = await mainMenu();
-    console.log(`🔍 [DEBUG] mainMenu() retornó: ${keepGoing}`);
     
     if (keepGoing) {
-      console.log('🔍 [DEBUG] keepGoing es true, esperando 1 segundo...');
       // Pequeña pausa para que el usuario vea el resultado
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('🔍 [DEBUG] Pausa completada, continuando bucle');
-    } else {
-      console.log('🔍 [DEBUG] keepGoing es false, saliendo del bucle');
     }
   }
-  
-  console.log('🔍 [DEBUG] runLoop() finalizado');
 }
 
 module.exports = { runLoop };
