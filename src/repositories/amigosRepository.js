@@ -4,7 +4,7 @@ const AmigosRepository = {
   async add(from, to) {
     const session = getSession('WRITE');
     try {
-      // Verificar que ambas personas existan
+      // Validación de existencia: Verifica que ambas personas existan antes de crear relación
       const checkResult = await session.run(
         `MATCH (a:Person {id: $from}), (b:Person {id: $to})
          RETURN count(a) as fromCount, count(b) as toCount`,
@@ -19,7 +19,7 @@ const AmigosRepository = {
         throw new Error(`Persona con ID ${to} no existe`);
       }
       
-      // Crear relaciones bidireccionales
+      // Creación bidireccional: MERGE evita duplicados, crea ambas direcciones
       await session.run(
         `MATCH (a:Person {id: $from}), (b:Person {id: $to})
          MERGE (a)-[:FRIEND_WITH]->(b)
@@ -36,7 +36,8 @@ const AmigosRepository = {
   async remove(from, to) {
     const session = getSession('WRITE');
     try {
-      // Eliminar ambas direcciones de la relación
+      // Eliminación bidireccional: Elimina ambas direcciones de la relación
+      // Primera dirección: from -> to
       const result1 = await session.run(
         `MATCH (a:Person {id: $from})-[r1:FRIEND_WITH]->(b:Person {id: $to}) 
          DELETE r1
@@ -44,6 +45,7 @@ const AmigosRepository = {
         { from, to }
       );
       
+      // Segunda dirección: to -> from
       const result2 = await session.run(
         `MATCH (b:Person {id: $to})-[r2:FRIEND_WITH]->(a:Person {id: $from}) 
          DELETE r2
@@ -51,6 +53,7 @@ const AmigosRepository = {
         { from, to }
       );
       
+      // Verificar si se eliminó alguna relación
       const deletedCount1 = result1.records[0]?.get('deletedCount1').toNumber() || 0;
       const deletedCount2 = result2.records[0]?.get('deletedCount2').toNumber() || 0;
       

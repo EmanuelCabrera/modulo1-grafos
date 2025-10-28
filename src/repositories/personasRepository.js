@@ -4,6 +4,9 @@ const PersonaRepository = {
   async createOrUpdate({ id, name, city, age, hobby }) {
     const session = getSession('WRITE');
     try {
+      // MERGE: Busca un nodo Person con el ID dado, si no existe lo crea
+      // ON CREATE: Si es nuevo, establece todos los campos y timestamp de creación
+      // ON MATCH: Si existe, actualiza solo los campos que no son null (coalesce)
       const res = await session.run(
         `MERGE (p:Person {id: $id})
          ON CREATE SET p.name = $name, p.city = $city, p.age = $age, p.hobby = $hobby, p.createdAt = datetime()
@@ -20,6 +23,8 @@ const PersonaRepository = {
   async list(q) {
     const session = getSession('READ');
     try {
+      // Búsqueda flexible: Si hay filtro (q), busca en nombre, ciudad o hobby
+      // Si no hay filtro, retorna todas las personas ordenadas por nombre
       const res = await session.run(
         q
           ? `MATCH (p:Person)
@@ -39,6 +44,8 @@ const PersonaRepository = {
   async deleteById(id) {
     const session = getSession('WRITE');
     try {
+      // DETACH DELETE: Elimina el nodo y todas sus relaciones automáticamente
+      // Evita errores de integridad referencial
       await session.run(`MATCH (p:Person {id: $id}) DETACH DELETE p`, { id });
     } finally {
       await session.close();
@@ -48,6 +55,8 @@ const PersonaRepository = {
   async findByName(name) {
     const session = getSession('READ');
     try {
+      // Búsqueda case-insensitive: Convierte ambos nombres a minúsculas para comparar
+      // LIMIT 1: Solo retorna la primera coincidencia (debería ser única por constraint)
       const res = await session.run(
         `MATCH (p:Person) 
          WHERE toLower(p.name) = toLower($name) 
@@ -63,6 +72,8 @@ const PersonaRepository = {
   async friendsOf(id) {
     const session = getSession('READ');
     try {
+      // Búsqueda bidireccional: Encuentra amigos en ambas direcciones de la relación
+      // DISTINCT: Evita duplicados cuando hay relaciones bidireccionales
       const res = await session.run(
         `MATCH (p:Person {id: $id})-[:FRIEND_WITH]-(f:Person) 
          RETURN DISTINCT f ORDER BY f.name`, 
@@ -77,6 +88,8 @@ const PersonaRepository = {
   async getCityRecommendations(personId, city) {
     const session = getSession('READ');
     try {
+      // Recomendaciones por ciudad: Encuentra personas de la misma ciudad que no sean amigos
+      // Excluye: a sí mismo y a sus amigos actuales
       const res = await session.run(
         `MATCH (p:Person {id: $personId})
          MATCH (recommendation:Person)
@@ -95,6 +108,8 @@ const PersonaRepository = {
   async getHobbyRecommendations(personId, hobby) {
     const session = getSession('READ');
     try {
+      // Recomendaciones por hobby: Encuentra personas con el mismo hobby que no sean amigos
+      // Excluye: a sí mismo y a sus amigos actuales
       const res = await session.run(
         `MATCH (p:Person {id: $personId})
          MATCH (recommendation:Person)
@@ -113,23 +128,25 @@ const PersonaRepository = {
   async getStatistics() {
     const session = getSession('READ');
     try {
-      // Total de personas
+      // Estadísticas completas de la red social
+      
+      // 1. Total de personas: Cuenta todos los nodos Person
       const peopleResult = await session.run(`MATCH (p:Person) RETURN count(p) as total`);
       const totalPeople = peopleResult.records[0].get('total').toNumber();
 
-      // Total de relaciones
+      // 2. Total de relaciones: Cuenta todas las relaciones FRIEND_WITH (direccionales)
       const relationsResult = await session.run(`MATCH ()-[r:FRIEND_WITH]->() RETURN count(r) as total`);
       const totalRelationships = relationsResult.records[0].get('total').toNumber();
 
-      // Ciudades únicas
+      // 3. Ciudades únicas: Cuenta ciudades distintas (excluye nulls)
       const citiesResult = await session.run(`MATCH (p:Person) WHERE p.city IS NOT NULL RETURN count(DISTINCT p.city) as total`);
       const uniqueCities = citiesResult.records[0].get('total').toNumber();
 
-      // Hobbies únicos
+      // 4. Hobbies únicos: Cuenta hobbies distintos (excluye nulls)
       const hobbiesResult = await session.run(`MATCH (p:Person) WHERE p.hobby IS NOT NULL RETURN count(DISTINCT p.hobby) as total`);
       const uniqueHobbies = hobbiesResult.records[0].get('total').toNumber();
 
-      // Promedio de amigos por persona
+      // 5. Promedio de amigos: OPTIONAL MATCH incluye personas sin amigos (0 amigos)
       const avgResult = await session.run(
         `MATCH (p:Person)
          OPTIONAL MATCH (p)-[:FRIEND_WITH]-(friend:Person)
@@ -141,7 +158,7 @@ const PersonaRepository = {
         (typeof averageFriendsValue.toNumber === 'function' ? averageFriendsValue.toNumber() : Number(averageFriendsValue)) : 
         0;
 
-      // Persona con más amigos
+      // 6. Persona más conectada: Encuentra quien tiene más amigos
       const mostConnectedResult = await session.run(
         `MATCH (p:Person)
          OPTIONAL MATCH (p)-[:FRIEND_WITH]-(friend:Person)
